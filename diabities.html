@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Diagnosis | Diabetes Models</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; background-color: #111827; }
+    .glass-card { background: rgba(31, 41, 55, 0.6); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
+    .sidebar-link.active { background-color: #3B82F6; color: white; }
+  </style>
+</head>
+<body class="text-gray-200">
+
+<div class="flex min-h-screen">
+  <!-- Sidebar -->
+  <nav class="w-64 bg-gray-900/70 p-4 border-r border-gray-700">
+    <h1 class="text-2xl font-bold text-white mb-8">AI Diagnosis</h1>
+    <ul>
+      <li><a href="#" id="nav-comparison" class="sidebar-link active flex items-center p-3 rounded-lg font-semibold">📊 Model Comparison</a></li>
+      <li class="mt-2"><a href="#" id="nav-features" class="sidebar-link flex items-center p-3 rounded-lg font-semibold text-gray-400 hover:bg-gray-800 hover:text-white">🌟 Feature Importance</a></li>
+      <li class="mt-2"><a href="#" id="nav-predict" class="sidebar-link flex items-center p-3 rounded-lg font-semibold text-gray-400 hover:bg-gray-800 hover:text-white">🧪 Try Prediction</a></li>
+      <li class="mt-2"><a href="#" id="nav-about" class="sidebar-link flex items-center p-3 rounded-lg font-semibold text-gray-400 hover:bg-gray-800 hover:text-white">ℹ️ About</a></li>
+    </ul>
+  </nav>
+
+  <!-- Main content -->
+  <main class="flex-1 p-6">
+    <!-- Comparison Page -->
+    <div id="page-comparison">
+      <h1 class="text-3xl font-bold text-white mb-6">Diabetes Prediction Models</h1>
+      <div class="glass-card rounded-lg p-6">
+        <canvas id="metricsChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Feature Importance Page -->
+    <div id="page-features" class="hidden">
+      <h1 class="text-3xl font-bold text-white mb-6">Feature Importance (XGBoost)</h1>
+      <div class="glass-card rounded-lg p-6">
+        <canvas id="featureChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Prediction Page -->
+    <div id="page-predict" class="hidden">
+      <h1 class="text-3xl font-bold text-white mb-6">Try Your Own Data</h1>
+      <div class="glass-card rounded-lg p-6 space-y-4">
+        <p class="text-gray-300">Enter your details to get a quick diabetes risk prediction:</p>
+        <div class="grid grid-cols-2 gap-4">
+          <input id="glucose" type="number" placeholder="Glucose Level" class="p-2 rounded bg-gray-800 text-white">
+          <input id="bmi" type="number" placeholder="BMI" class="p-2 rounded bg-gray-800 text-white">
+          <input id="age" type="number" placeholder="Age" class="p-2 rounded bg-gray-800 text-white">
+          <input id="bp" type="number" placeholder="Blood Pressure" class="p-2 rounded bg-gray-800 text-white">
+        </div>
+        <button onclick="predictDiabetes()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">Predict</button>
+        <p id="predictionResult" class="text-lg font-bold mt-4"></p>
+      </div>
+    </div>
+
+    <!-- About Page -->
+    <div id="page-about" class="hidden">
+      <h1 class="text-3xl font-bold text-white mb-6">About This Project</h1>
+      <div class="glass-card rounded-lg p-6 space-y-4">
+        <p class="text-gray-300">This project compares different machine learning models for diabetes prediction:</p>
+        <ul class="list-disc pl-6 text-gray-400">
+          <li><b>Logistic Regression</b> – simple and interpretable baseline</li>
+          <li><b>Random Forest</b> – ensemble of decision trees</li>
+          <li><b>SVM</b> – finds an optimal separating boundary</li>
+          <li><b>ANN</b> – neural network capturing complex patterns</li>
+          <li><b>XGBoost</b> – gradient boosting with high performance</li>
+        </ul>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+  // Navigation
+  const pages = {
+    comparison: document.getElementById("page-comparison"),
+    features: document.getElementById("page-features"),
+    predict: document.getElementById("page-predict"),
+    about: document.getElementById("page-about")
+  };
+  const links = {
+    comparison: document.getElementById("nav-comparison"),
+    features: document.getElementById("nav-features"),
+    predict: document.getElementById("nav-predict"),
+    about: document.getElementById("nav-about")
+  };
+
+  function navigate(pageKey) {
+    Object.values(pages).forEach(p => p.classList.add("hidden"));
+    Object.values(links).forEach(l => l.classList.remove("active"));
+    pages[pageKey].classList.remove("hidden");
+    links[pageKey].classList.add("active");
+  }
+
+  links.comparison.onclick = e => { e.preventDefault(); navigate("comparison"); };
+  links.features.onclick = e => { e.preventDefault(); navigate("features"); };
+  links.predict.onclick = e => { e.preventDefault(); navigate("predict"); };
+  links.about.onclick = e => { e.preventDefault(); navigate("about"); };
+
+  // Metrics chart
+  const models = ["LogReg", "RandomForest", "SVM", "ANN", "XGBoost"];
+  const metrics = {
+    Accuracy: [0.78, 0.82, 0.80, 0.84, 0.88],
+    Precision: [0.75, 0.81, 0.79, 0.83, 0.87],
+    Recall: [0.76, 0.80, 0.78, 0.85, 0.89],
+    F1: [0.75, 0.81, 0.78, 0.84, 0.88]
+  };
+  new Chart(document.getElementById("metricsChart"), {
+    type: "bar",
+    data: {
+      labels: models,
+      datasets: Object.keys(metrics).map((m,i)=>({
+        label: m,
+        data: metrics[m],
+        backgroundColor: `hsl(${i*90},70%,60%)`
+      }))
+    },
+    options: { plugins:{legend:{labels:{color:"#ddd"}}}, scales:{x:{ticks:{color:"#ccc"}}, y:{ticks:{color:"#ccc"},beginAtZero:true,max:1}}}
+  });
+
+  // Feature importance chart
+  const features = ["Glucose","BMI","Age","Blood Pressure","Insulin","Pregnancies"];
+  const importances = [0.32,0.25,0.15,0.10,0.10,0.08];
+  new Chart(document.getElementById("featureChart"), {
+    type: "bar",
+    data: {
+      labels: features,
+      datasets: [{ label: "Importance", data: importances, backgroundColor: "#3B82F6" }]
+    },
+    options: { indexAxis: 'y', plugins:{legend:{display:false}}, scales:{x:{ticks:{color:"#ccc"}}, y:{ticks:{color:"#ccc"}}} }
+  });
+
+  // Dummy prediction function
+  function predictDiabetes() {
+    const glucose = parseFloat(document.getElementById("glucose").value);
+    const bmi = parseFloat(document.getElementById("bmi").value);
+    const age = parseFloat(document.getElementById("age").value);
+    const bp = parseFloat(document.getElementById("bp").value);
+
+    // Simple threshold rule (just demo, replace with real model later)
+    let riskScore = 0;
+    if (glucose > 125) riskScore++;
+    if (bmi > 30) riskScore++;
+    if (age > 45) riskScore++;
+    if (bp > 130) riskScore++;
+
+    const result = document.getElementById("predictionResult");
+    if (riskScore >= 2) {
+      result.textContent = "⚠️ High Risk: Likely Diabetic";
+      result.className = "text-red-400 font-bold";
+    } else {
+      result.textContent = "✅ Low Risk: Not Diabetic";
+      result.className = "text-green-400 font-bold";
+    }
+  }
+</script>
+
+</body>
+</html>
